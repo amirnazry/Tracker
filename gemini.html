@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>برنامه‌ریز شخصی</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.0.0/Vazirmatn-font-face.css');
+
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            direction: rtl;
+            text-align: right;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .tooltip-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            z-index: 1000;
+            display: none;
+        }
+
+        /* Custom scrollbar for table */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #a3a3a3;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #737373;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 to-purple-50 p-4">
+
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">برنامه‌ریز شخصی</h1>
+
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
+            <div class="flex border-b border-gray-200">
+                <button id="add-tab-btn" class="flex-1 py-4 text-center font-semibold transition-colors duration-300 bg-indigo-600 text-white">
+                    افزودن ورودی
+                </button>
+                <button id="view-tab-btn" class="flex-1 py-4 text-center font-semibold transition-colors duration-300 bg-white text-gray-600 hover:bg-gray-100">
+                    نمایش داده‌ها
+                </button>
+            </div>
+
+            <div id="add-tab" class="p-6 md:p-8 space-y-4">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1">
+                        <label for="date-input" class="block text-sm font-medium text-gray-700">تاریخ</label>
+                        <input type="date" id="date-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1">
+                        <label for="sleep-time-input" class="block text-sm font-medium text-gray-700">ساعت خواب</label>
+                        <input type="time" id="sleep-time-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div class="flex-1">
+                        <label for="wake-up-time-input" class="block text-sm font-medium text-gray-700">ساعت بیداری</label>
+                        <input type="time" id="wake-up-time-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1">
+                        <label for="tests-input" class="block text-sm font-medium text-gray-700">تعداد تست زده‌شده</label>
+                        <input type="number" id="tests-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500" placeholder="مثال: 50">
+                    </div>
+                    <div class="flex-1">
+                        <label for="water-input" class="block text-sm font-medium text-gray-700">میزان مصرف آب (لیتر)</label>
+                        <input type="number" id="water-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500" placeholder="مثال: 2">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="food-input" class="block text-sm font-medium text-gray-700">غذاهای خورده‌شده</label>
+                    <input type="text" id="food-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:border-indigo-500 focus:ring-indigo-500" placeholder="مثال: صبحانه: املت، ناهار: خورشت">
+                </div>
+
+                <button id="add-entry-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    ثبت
+                </button>
+            </div>
+
+            <div id="view-tab" class="p-6 md:p-8 space-y-6 hidden">
+                <div class="flex justify-center flex-wrap gap-2 mb-4">
+                    <button id="chart-sleep-btn" class="px-4 py-2 rounded-lg font-medium transition-colors duration-300 bg-blue-500 text-white">
+                        نمودار خواب
+                    </button>
+                    <button id="chart-tests-btn" class="px-4 py-2 rounded-lg font-medium transition-colors duration-300 bg-gray-200 text-gray-800">
+                        نمودار تست
+                    </button>
+                    <button id="chart-water-btn" class="px-4 py-2 rounded-lg font-medium transition-colors duration-300 bg-gray-200 text-gray-800">
+                        نمودار مصرف آب
+                    </button>
+                </div>
+
+                <div class="flex justify-center flex-wrap gap-2 mb-6">
+                    <button id="period-daily-btn" class="px-4 py-2 rounded-lg font-medium transition-colors duration-300 bg-indigo-600 text-white">
+                        روزانه
+                    </button>
+                    <button id="period-weekly-btn" class="px-4 py-2 rounded-lg font-medium transition-colors duration-300 bg-gray-200 text-gray-800">
+                        هفتگی
+                    </button>
+                    <button id="period-monthly-btn" class="px-4 py-2 rounded-lg font-medium transition-colors duration-300 bg-gray-200 text-gray-800">
+                        ماهانه
+                    </button>
+                </div>
+
+                <div id="chart-container-wrapper" class="w-full h-80 md:h-96 p-4 bg-white rounded-xl shadow-md flex items-center justify-center">
+                    <canvas id="chart-canvas"></canvas>
+                    <div id="no-data-message" class="text-gray-500 font-vazir text-center hidden">
+                        <p>داده‌ای برای نمایش نمودار وجود ندارد.</p>
+                        <p>یک ورودی جدید اضافه کنید.</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-center mt-6">
+                    <button id="toggle-table-btn" class="px-6 py-2 rounded-lg font-medium text-gray-800 bg-gray-200 hover:bg-gray-300 transition-colors duration-300">
+                        نمایش جدول
+                    </button>
+                </div>
+
+                <div id="table-container" class="mt-6 bg-white rounded-xl shadow-md overflow-hidden hidden">
+                    <h3 class="text-xl font-bold p-4 border-b border-gray-200">جدول داده‌ها</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تاریخ</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ساعت خواب</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ساعت بیداری</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">مدت خواب</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تعداد تست</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">مصرف آب (لیتر)</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">غذا</th>
+                                </tr>
+                            </thead>
+                            <tbody id="data-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="message-container" class="fixed top-5 right-5 z-50 bg-green-500 text-white rounded-lg px-4 py-2 shadow-lg animate-pulse hidden"></div>
+
+    <script>
+        // UI Elements
+        const addTabBtn = document.getElementById('add-tab-btn');
+        const viewTabBtn = document.getElementById('view-tab-btn');
+        const addTab = document.getElementById('add-tab');
+        const viewTab = document.getElementById('view-tab');
+        const dateInput = document.getElementById('date-input');
+        const sleepTimeInput = document.getElementById('sleep-time-input');
+        const wakeUpTimeInput = document.getElementById('wake-up-time-input');
+        const testsInput = document.getElementById('tests-input');
+        const waterInput = document.getElementById('water-input');
+        const foodInput = document.getElementById('food-input');
+        const addEntryBtn = document.getElementById('add-entry-btn');
+        const messageContainer = document.getElementById('message-container');
+        const chartCanvas = document.getElementById('chart-canvas');
+        const noDataMessage = document.getElementById('no-data-message');
+        const tableContainer = document.getElementById('table-container');
+        const dataTableBody = document.getElementById('data-table-body');
+        const toggleTableBtn = document.getElementById('toggle-table-btn');
+
+        // Chart & Data state
+        let currentChartInstance = null;
+        let activeChart = 'sleep';
+        let timePeriod = 'daily';
+        let allEntries = [];
+
+        const CHART_COLORS = {
+            sleep: 'rgb(54, 162, 235)',
+            tests: 'rgb(255, 99, 132)',
+            water: 'rgb(75, 192, 192)',
+        };
+
+        const CHART_BORDERS = {
+            sleep: 'rgb(54, 162, 235)',
+            tests: 'rgb(255, 99, 132)',
+            water: 'rgb(75, 192, 192)',
+        };
+        
+        // Initialize date input to current date
+        dateInput.value = new Date().toISOString().split('T')[0];
+
+        // --- Data Handling Functions ---
+        const showMessage = (text, isError = false) => {
+            messageContainer.textContent = text;
+            messageContainer.classList.remove('hidden', 'bg-green-500', 'bg-red-500');
+            if (isError) {
+                messageContainer.classList.add('bg-red-500');
+            } else {
+                messageContainer.classList.add('bg-green-500');
+            }
+            setTimeout(() => {
+                messageContainer.classList.add('hidden');
+            }, 3000);
+        };
+
+        const calculateSleepHours = (sleep, wake) => {
+            if (!sleep || !wake) return 0;
+            
+            const [sleepHour, sleepMinute] = sleep.split(':').map(Number);
+            const [wakeHour, wakeMinute] = wake.split(':').map(Number);
+            
+            let sleepDate = new Date(dateInput.value);
+            sleepDate.setHours(sleepHour, sleepMinute, 0, 0);
+            
+            let wakeDate = new Date(dateInput.value);
+            wakeDate.setHours(wakeHour, wakeMinute, 0, 0);
+
+            // If wake-up time is before sleep time, it's on the next day
+            if (wakeDate <= sleepDate) {
+              wakeDate.setDate(wakeDate.getDate() + 1);
+            }
+
+            const diffMs = wakeDate - sleepDate;
+            const diffHours = diffMs / (1000 * 60 * 60);
+            return Math.round(diffHours * 10) / 10;
+        };
+
+        const handleAddEntry = () => {
+            const date = dateInput.value;
+            const sleepTime = sleepTimeInput.value;
+            const wakeUpTime = wakeUpTimeInput.value;
+            const testsCount = testsInput.value;
+            const waterIntake = waterInput.value;
+            const food = foodInput.value;
+
+            if (!sleepTime && !testsCount && !waterIntake && !food) {
+                showMessage('لطفا حداقل یکی از فیلدها را پر کنید.', true);
+                return;
+            }
+
+            // Check for duplicate date
+            if (allEntries.some(entry => entry.date === date)) {
+                showMessage('ورودی برای این تاریخ قبلا ثبت شده است. از یک تاریخ دیگر استفاده کنید.', true);
+                return;
+            }
+            
+            const calculatedSleepHours = calculateSleepHours(sleepTime, wakeUpTime);
+
+            try {
+                const newEntry = {
+                    date: date,
+                    sleep_hours: calculatedSleepHours,
+                    sleep_time: sleepTime || null,
+                    wake_up_time: wakeUpTime || null,
+                    tests_count: testsCount ? parseInt(testsCount, 10) : 0,
+                    water_intake_ml: waterIntake ? parseFloat(waterIntake) : 0,
+                    food: food,
+                    timestamp: new Date().toISOString(),
+                };
+                
+                allEntries.push(newEntry);
+                allEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                showMessage('ورودی شما با موفقیت ثبت شد!');
+                
+                sleepTimeInput.value = '';
+                wakeUpTimeInput.value = '';
+                testsInput.value = '';
+                waterInput.value = '';
+                foodInput.value = '';
+                dateInput.value = new Date().toISOString().split('T')[0];
+                setActiveTab('view');
+            } catch (e) {
+                console.error("Error adding entry: ", e);
+                showMessage('خطا در ثبت اطلاعات.', true);
+            }
+        };
+
+        const aggregateData = (data, period) => {
+            const aggregated = {};
+            
+            data.forEach(entry => {
+                const entryDate = new Date(entry.date);
+                let key;
+
+                if (period === 'weekly') {
+                    const dayOfWeek = entryDate.getDay();
+                    const days = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'];
+                    key = days[dayOfWeek];
+                } else if (period === 'monthly') {
+                    const weekNumber = Math.ceil(entryDate.getDate() / 7);
+                    key = `هفته ${weekNumber}`;
+                } else { // daily
+                    key = entry.date;
+                }
+
+                if (!aggregated[key]) {
+                    aggregated[key] = { sleep_hours: [], tests_count: [], water_intake_ml: [] };
+                }
+                if (entry.sleep_hours) aggregated[key].sleep_hours.push(entry.sleep_hours);
+                if (entry.tests_count) aggregated[key].tests_count.push(entry.tests_count);
+                if (entry.water_intake_ml) aggregated[key].water_intake_ml.push(entry.water_intake_ml);
+            });
+
+            const labels = Object.keys(aggregated);
+            const sleepValues = labels.map(key => aggregated[key].sleep_hours.length > 0 ? (aggregated[key].sleep_hours.reduce((sum, val) => sum + val, 0) / aggregated[key].sleep_hours.length).toFixed(1) : 0);
+            const testsValues = labels.map(key => aggregated[key].tests_count.reduce((sum, val) => sum + val, 0));
+            const waterValues = labels.map(key => aggregated[key].water_intake_ml.reduce((sum, val) => sum + val, 0));
+
+            return {
+                sleep: { labels, values: sleepValues },
+                tests: { labels, values: testsValues },
+                water: { labels, values: waterValues }
+            };
+        };
+        
+        // --- UI Rendering Functions ---
+        const renderChart = () => {
+            if (currentChartInstance) {
+                currentChartInstance.destroy();
+            }
+
+            const chartData = aggregateData(allEntries, timePeriod);
+            let dataForChart;
+            let label;
+            let unit;
+
+            switch(activeChart) {
+                case 'sleep':
+                    dataForChart = chartData.sleep;
+                    label = 'ساعت خواب';
+                    unit = 'ساعت';
+                    break;
+                case 'tests':
+                    dataForChart = chartData.tests;
+                    label = 'تعداد تست';
+                    unit = 'تست';
+                    break;
+                case 'water':
+                    dataForChart = chartData.water;
+                    label = 'مصرف آب';
+                    unit = 'لیتر';
+                    break;
+            }
+
+            if (dataForChart.labels.length === 0) {
+                chartCanvas.classList.add('hidden');
+                noDataMessage.classList.remove('hidden');
+                return;
+            }
+            
+            chartCanvas.classList.remove('hidden');
+            noDataMessage.classList.add('hidden');
+            
+            currentChartInstance = new Chart(chartCanvas, {
+                type: 'line',
+                data: {
+                    labels: dataForChart.labels,
+                    datasets: [{
+                        label: label,
+                        data: dataForChart.values,
+                        borderColor: CHART_BORDERS[activeChart],
+                        backgroundColor: CHART_COLORS[activeChart],
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: { family: 'Vazirmatn' }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: label,
+                            font: { size: 16, family: 'Vazirmatn' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: timePeriod === 'weekly' ? 'روز' : (timePeriod === 'monthly' ? 'هفته' : 'روز'),
+                                font: { family: 'Vazirmatn' }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: unit,
+                                font: { family: 'Vazirmatn' }
+                            },
+                            beginAtZero: true,
+                        }
+                    }
+                }
+            });
+        };
+
+        const renderTable = () => {
+            dataTableBody.innerHTML = '';
+            allEntries.forEach(entry => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                
+                const dateCell = new Date(entry.date).toLocaleDateString('fa-IR');
+                const sleepTimeCell = entry.sleep_time || '-';
+                const wakeUpTimeCell = entry.wake_up_time || '-';
+                const sleepHoursCell = entry.sleep_hours !== undefined ? entry.sleep_hours : '-';
+                const testsCountCell = entry.tests_count || '-';
+                const waterIntakeCell = entry.water_intake_ml || '-';
+                const foodCell = entry.food || '-';
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${dateCell}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${sleepTimeCell}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${wakeUpTimeCell}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${sleepHoursCell}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${testsCountCell}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${waterIntakeCell}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${foodCell}</td>
+                `;
+                dataTableBody.appendChild(row);
+            });
+        };
+
+        const renderContent = () => {
+            if (viewTab.classList.contains('hidden')) {
+                return;
+            }
+            renderChart();
+            renderTable();
+        };
+
+        const setActiveTab = (tab) => {
+            if (tab === 'add') {
+                addTabBtn.classList.add('bg-indigo-600', 'text-white');
+                addTabBtn.classList.remove('bg-white', 'text-gray-600', 'hover:bg-gray-100');
+                viewTabBtn.classList.remove('bg-indigo-600', 'text-white');
+                viewTabBtn.classList.add('bg-white', 'text-gray-600', 'hover:bg-gray-100');
+                addTab.classList.remove('hidden');
+                viewTab.classList.add('hidden');
+            } else {
+                viewTabBtn.classList.add('bg-indigo-600', 'text-white');
+                viewTabBtn.classList.remove('bg-white', 'text-gray-600', 'hover:bg-gray-100');
+                addTabBtn.classList.remove('bg-indigo-600', 'text-white');
+                addTabBtn.classList.add('bg-white', 'text-gray-600', 'hover:bg-gray-100');
+                viewTab.classList.remove('hidden');
+                addTab.classList.add('hidden');
+                renderContent();
+            }
+        };
+
+        const setActiveChartBtn = (chart) => {
+            document.querySelectorAll('#view-tab button[id^="chart-"]').forEach(btn => {
+                btn.classList.remove('bg-blue-500', 'bg-red-500', 'bg-teal-500', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-800');
+            });
+            const activeBtn = document.getElementById(`chart-${chart}-btn`);
+            activeBtn.classList.remove('bg-gray-200', 'text-gray-800');
+            switch(chart) {
+                case 'sleep': activeBtn.classList.add('bg-blue-500', 'text-white'); break;
+                case 'tests': activeBtn.classList.add('bg-red-500', 'text-white'); break;
+                case 'water': activeBtn.classList.add('bg-teal-500', 'text-white'); break;
+            }
+            activeChart = chart;
+            renderChart();
+        };
+
+        const setTimePeriodBtn = (period) => {
+            document.querySelectorAll('#view-tab button[id^="period-"]').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-800');
+            });
+            const activeBtn = document.getElementById(`period-${period}-btn`);
+            activeBtn.classList.remove('bg-gray-200', 'text-gray-800');
+            activeBtn.classList.add('bg-indigo-600', 'text-white');
+            timePeriod = period;
+            renderChart();
+        };
+        
+        // --- Event Listeners ---
+        const init = () => {
+            addTabBtn.addEventListener('click', () => setActiveTab('add'));
+            viewTabBtn.addEventListener('click', () => setActiveTab('view'));
+            addEntryBtn.addEventListener('click', handleAddEntry);
+            toggleTableBtn.addEventListener('click', () => {
+                const isHidden = tableContainer.classList.toggle('hidden');
+                toggleTableBtn.textContent = isHidden ? 'نمایش جدول' : 'پنهان کردن جدول';
+            });
+
+            document.getElementById('chart-sleep-btn').addEventListener('click', () => setActiveChartBtn('sleep'));
+            document.getElementById('chart-tests-btn').addEventListener('click', () => setActiveChartBtn('tests'));
+            document.getElementById('chart-water-btn').addEventListener('click', () => setActiveChartBtn('water'));
+
+            document.getElementById('period-daily-btn').addEventListener('click', () => setTimePeriodBtn('daily'));
+            document.getElementById('period-weekly-btn').addEventListener('click', () => setTimePeriodBtn('weekly'));
+            document.getElementById('period-monthly-btn').addEventListener('click', () => setTimePeriodBtn('monthly'));
+        };
+
+        // Start the application
+        window.onload = init;
+    </script>
+</body>
+</html>
