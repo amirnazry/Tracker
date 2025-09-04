@@ -239,7 +239,8 @@
                     <thead class="bg-gray-100">
                         <tr>
                             <th>تاریخ</th>
-                            <th>خواب</th>
+                            <th>ساعت خوابیدن</th>
+                            <th>مدت خواب</th>
                             <th>تست</th>
                             <th>آب</th>
                             <th>غذا</th>
@@ -325,7 +326,10 @@
 
         // --- Fetch & Render ---
         async function fetchData() {
-            let { data, error } = await supabase.from("daily_tracker_entries").select("*").order("date", {
+            let {
+                data,
+                error
+            } = await supabase.from("daily_tracker_entries").select("*").order("date", {
                 ascending: true
             });
             if (error) {
@@ -417,11 +421,12 @@
                 let tr = document.createElement("tr");
                 tr.innerHTML = `
                     <td class="py-2 px-4">${new Date(e.date).toLocaleDateString("fa-IR")}</td>
+                    <td class="py-2 px-4">${e.sleep_time || "-"}</td>
                     <td class="py-2 px-4">${e.sleep_hours || "-"}</td>
                     <td class="py-2 px-4">${e.tests_count || "-"}</td>
                     <td class="py-2 px-4">${e.water_intake_liters || "-"}</td>
                     <td class="py-2 px-4">${e.food || "-"}</td>
-                    <td class="py-2 px-4"><button onclick="del('${e.id}')" class="text-red-500 hover:text-red-700 transition-colors duration-200">❌</button></td>
+                    <td class="py-2 px-4"><button onclick="del('${e.date}')" class="text-red-500 hover:text-red-700 transition-colors duration-200">❌</button></td>
                 `;
                 tb.appendChild(tr);
             });
@@ -479,9 +484,14 @@
             }
         }
 
-        async function del(id) {
-            await supabase.from("daily_tracker_entries").delete().eq("id", id);
-            msg("حذف شد");
+        async function del(date) {
+            let { error } = await supabase.from("daily_tracker_entries").delete().eq("date", date);
+            if (error) {
+                msg("خطا در حذف: دسترسی ندارید.", true);
+                console.error("خطا در حذف رکورد:", error);
+            } else {
+                msg("حذف شد");
+            }
         }
 
         // --- Events ---
