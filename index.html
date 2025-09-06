@@ -174,26 +174,36 @@
         .hidden {
             display: none;
         }
+
+        /* Custom confirmation dialog style */
+        .confirmation-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            z-index: 2000;
+            text-align: center;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1500;
+        }
     </style>
-    <!-- Default Statcounter code for tracker https://tracker-mu-cyan.vercel.app/
--->
-    <script type="text/javascript">
-        var sc_project = 13164786;
-        var sc_invisible = 1;
-        var sc_security = "656d6570"; 
-    </script>
-    <script type="text/javascript" src="https://www.statcounter.com/counter/counter.js" async></script>
-    <noscript>
-        <div class="statcounter"><a title="Web Analytics" href="https://statcounter.com/" target="_blank"><img
-                    class="statcounter" src="https://c.statcounter.com/13164786/0/656d6570/1/" alt="Web Analytics"
-                    referrerPolicy="no-referrer-when-downgrade"></a></div>
-    </noscript>
-    <!-- End of Statcounter Code -->
 </head>
 
 <body>
     <div class="container">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">برنامه‌ریز شخصی</h1>
+        <h1 id="main-heading" class="text-3xl font-bold text-center text-gray-800 mb-6">برنامه‌ریز شخصی</h1>
 
         <div class="flex border-b border-gray-200 mb-6 rounded-t-xl overflow-hidden">
             <button id="add-tab-btn" class="tab-btn tab-btn-active rounded-tl-xl">افزودن</button>
@@ -215,7 +225,7 @@
             <div class="input-group">
                 <input type="text" id="food-input" class="input-field" placeholder="غذا">
             </div>
-            <button id="add-entry-btn" class="w-full btn btn-primary">ثبت</button>
+            <button id="action-btn" class="w-full btn btn-primary">ثبت</button>
         </div>
 
         <div id="view-tab" class="space-y-6 hidden">
@@ -244,7 +254,7 @@
                             <th>تست</th>
                             <th>آب</th>
                             <th>غذا</th>
-                            <th></th>
+                            <th>عملیات</th>
                         </tr>
                     </thead>
                     <tbody id="data-table-body"></tbody>
@@ -254,6 +264,16 @@
     </div>
 
     <div id="message" class="message-box hidden"></div>
+    <div id="confirmation-modal" class="hidden">
+        <div class="overlay"></div>
+        <div class="confirmation-dialog">
+            <p class="text-lg font-semibold mb-4">آیا از حذف این ورودی مطمئن هستید؟</p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-yes-btn" class="btn btn-primary">بله</button>
+                <button id="confirm-no-btn" class="btn btn-secondary">خیر</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         const supabaseUrl = "https://lcrnswqkscmwbrdartic.supabase.co";
@@ -264,6 +284,8 @@
             activeChart = "sleep",
             timePeriod = "daily",
             chartInstance = null;
+        
+        let editingMode = false;
 
         // --- Utils ---
         const msg = (t, e = false) => {
@@ -284,6 +306,13 @@
             wd.setHours(wh, wm);
             if (wd <= sd) wd.setDate(wd.getDate() + 1);
             return ((wd - sd) / 36e5).toFixed(1);
+        };
+
+        const formatSleepDuration = (decimalHours) => {
+            if (decimalHours === null || isNaN(decimalHours)) return "-";
+            const hours = Math.floor(decimalHours);
+            const minutes = Math.round((decimalHours - hours) * 60);
+            return `${hours} ساعت و ${minutes} دقیقه`;
         };
 
         const setActiveTab = (tab) => {
@@ -324,6 +353,18 @@
             renderChart();
         };
 
+        const resetForm = () => {
+            document.getElementById("date-input").value = "";
+            document.getElementById("sleep-time-input").value = "";
+            document.getElementById("wake-up-time-input").value = "";
+            document.getElementById("tests-input").value = "";
+            document.getElementById("water-input").value = "";
+            document.getElementById("food-input").value = "";
+            document.getElementById("action-btn").textContent = "ثبت";
+            document.getElementById("date-input").disabled = false;
+            document.getElementById("main-heading").textContent = "برنامه‌ریز شخصی";
+            editingMode = false;
+        };
         // --- Fetch & Render ---
         async function fetchData() {
             let {
@@ -422,11 +463,14 @@
                 tr.innerHTML = `
                     <td class="py-2 px-4">${new Date(e.date).toLocaleDateString("fa-IR")}</td>
                     <td class="py-2 px-4">${e.sleep_time || "-"}</td>
-                    <td class="py-2 px-4">${e.sleep_hours || "-"}</td>
+                    <td class="py-2 px-4">${formatSleepDuration(e.sleep_hours) || "-"}</td>
                     <td class="py-2 px-4">${e.tests_count || "-"}</td>
                     <td class="py-2 px-4">${e.water_intake_liters || "-"}</td>
                     <td class="py-2 px-4">${e.food || "-"}</td>
-                    <td class="py-2 px-4"><button onclick="del('${e.date}')" class="text-red-500 hover:text-red-700 transition-colors duration-200">❌</button></td>
+                    <td class="py-2 px-4 flex justify-center gap-2">
+                        <button onclick="editEntry('${e.date}')" class="text-blue-500 hover:text-blue-700 transition-colors duration-200">✏️</button>
+                        <button onclick="showDeleteConfirmation('${e.date}')" class="text-red-500 hover:text-red-700 transition-colors duration-200">❌</button>
+                    </td>
                 `;
                 tb.appendChild(tr);
             });
@@ -451,15 +495,18 @@
                 return;
             }
 
-            let {
-                data: dup
-            } = await supabase.from("daily_tracker_entries").select("date").eq("date", d);
-            if (dup && dup.length) {
-                msg("تاریخ تکراری", true);
-                return;
+            if (!editingMode) {
+                let {
+                    data: dup
+                } = await supabase.from("daily_tracker_entries").select("date").eq("date", d);
+                if (dup && dup.length) {
+                    msg("تاریخ تکراری", true);
+                    return;
+                }
             }
 
-            let e = {
+
+            let entryData = {
                 date: d,
                 sleep_hours: calcSleep(s, w, d),
                 sleep_time: s || null,
@@ -470,18 +517,46 @@
                 timestamp: new Date().toISOString()
             };
 
-            let {
-                error
-            } = await supabase.from("daily_tracker_entries").insert(e);
-            if (error) msg("خطا", true);
-            else {
-                msg("ثبت شد");
-                document.getElementById("sleep-time-input").value = "";
-                document.getElementById("wake-up-time-input").value = "";
-                document.getElementById("tests-input").value = "";
-                document.getElementById("water-input").value = "";
-                document.getElementById("food-input").value = "";
+            let error;
+            if (editingMode) {
+                let {
+                    error: updateError
+                } = await supabase.from("daily_tracker_entries").update(entryData).eq("date", d);
+                error = updateError;
+            } else {
+                let {
+                    error: insertError
+                } = await supabase.from("daily_tracker_entries").insert(entryData);
+                error = insertError;
             }
+
+            if (error) {
+                msg("خطا در ثبت/ویرایش", true);
+                console.error("خطا در عملیات پایگاه داده:", error);
+            } else {
+                msg(editingMode ? "ویرایش شد" : "ثبت شد");
+                resetForm();
+                setActiveTab("view");
+            }
+        }
+
+        function editEntry(date) {
+            const entry = allEntries.find(e => e.date === date);
+            if (!entry) return;
+
+            document.getElementById("date-input").value = entry.date;
+            document.getElementById("sleep-time-input").value = entry.sleep_time;
+            document.getElementById("wake-up-time-input").value = entry.wake_up_time;
+            document.getElementById("tests-input").value = entry.tests_count;
+            document.getElementById("water-input").value = entry.water_intake_liters;
+            document.getElementById("food-input").value = entry.food;
+            
+            document.getElementById("action-btn").textContent = "ویرایش";
+            document.getElementById("date-input").disabled = true;
+            document.getElementById("main-heading").textContent = "ویرایش ورودی";
+            
+            editingMode = true;
+            setActiveTab("add");
         }
 
         async function del(date) {
@@ -493,19 +568,43 @@
                 msg("حذف شد");
             }
         }
+        
+        function showDeleteConfirmation(date) {
+            const modal = document.getElementById("confirmation-modal");
+            modal.classList.remove("hidden");
+            
+            const yesBtn = document.getElementById("confirm-yes-btn");
+            const noBtn = document.getElementById("confirm-no-btn");
+            
+            // Clean up previous event listeners
+            yesBtn.replaceWith(yesBtn.cloneNode(true));
+            noBtn.replaceWith(noBtn.cloneNode(true));
+            
+            document.getElementById("confirm-yes-btn").onclick = () => {
+                modal.classList.add("hidden");
+                del(date);
+            };
+            document.getElementById("confirm-no-btn").onclick = () => {
+                modal.classList.add("hidden");
+            };
+        }
 
         // --- Events ---
-        document.getElementById("add-tab-btn").onclick = () => setActiveTab("add");
+        document.getElementById("add-tab-btn").onclick = () => {
+            resetForm();
+            setActiveTab("add");
+        };
         document.getElementById("view-tab-btn").onclick = () => {
             setActiveTab("view");
             render();
         };
-        document.getElementById("add-entry-btn").onclick = addEntry;
+        document.getElementById("action-btn").onclick = addEntry;
         ["sleep", "tests", "water"].forEach(c => document.getElementById(`chart-${c}-btn`).onclick = () => setActiveChartBtn(c));
         ["daily", "weekly", "monthly"].forEach(p => document.getElementById(`period-${p}-btn`).onclick = () => setTimePeriodBtn(p));
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchData();
+            // This listener automatically fetches and renders data when changes occur in the database, providing real-time updates.
             supabase.channel("changes").on("postgres_changes", {
                 event: "*",
                 schema: "public",
